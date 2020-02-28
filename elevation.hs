@@ -1,8 +1,8 @@
 
 
--- tHe stack language
+-- Elevation stack language
 
-module StackLang where
+module Elevation where
 
 import Prelude
 
@@ -128,7 +128,8 @@ cmd Mul          = \s -> case s of
 cmd Equ          = \s -> case s of
                            (Left i  : Left j  : s') -> Just (Left (TheBool (i == j)) : s')
                            _ -> Nothing
-cmd (IfElse t e) = \s -> case s of
+                           
+cmd (IfElse t e) = \s -> case s of  
                            ((Left (TheBool True))  : s') -> prog t s'
                            ((Left (TheBool False)) : s') -> prog e s'
                            _ -> Nothing
