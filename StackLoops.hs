@@ -5,8 +5,8 @@ import Elevation
 --
 -- This for loop works in the following way:
 --     (1) Push '0' and the current index onto the stack.
---     (3) Check if they are equal.
---     (4) If they are equal, run the loop again with the index decremented by one.
+--     (2) Check if they are equal.
+--     (3) If they are equal, run the loop again with the index decremented by one.
 --         Else, run the last copy of the program.
 --
 for :: Int -> Prog -> Prog
