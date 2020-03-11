@@ -30,13 +30,13 @@ import Prelude
 --type Prog = [Either CoreCmd SugarCmd]
 type Prog = [CoreCmd]
 
-data StackType = TheInt    Int
-               | TheBool   Bool
-               | TheString String
-               | TheFunc   Prog
+data StackValue =      TheInt    Int
+                     | TheBool   Bool
+                     | TheString String
+                     | TheFunc   Prog
   deriving (Eq,Show)
 
-data CoreCmd = Push StackType
+data CoreCmd = Push StackValue
              | Pop
              | Add
              | Mul
@@ -50,12 +50,71 @@ data SugarCmd = Swap
               | Drop
   deriving (Eq,Show)
 
+
+
+
+-- define the possible types
+data StackType = TtheInt
+               | TtheBool
+               | TtheString
+               | TtheFunc
+               | TtheError
+    deriving (Eq,Show)
+
+type TheTypeStack = [Either StackType PlaceHolder]
+
+type TypeDomain = TheTypeStack -> Maybe TheTypeStack
+
+-- produce the type of a program (not a command, you can type check a command but you must provide a built stack for that, so just type check entire program!), or error if its bogus
+-- should I use \lambda, by using domain or just include stack in parameter, not even fully sure of the distinction.
+-- seems we will have to run a type emulation at the least, in order to statically type check.
+
+
+
+-- 2133, code I have so far, touching up needs to be done and integration of this into the main code base but it should paint a picture of what is going to happen:
+-- the program will run, using only types and just throw an error if an operation takes place on incorrect types, it doesn't "add" anything it just ensures
+-- the types being added make sense (support strings eventually?), this type checking will occure before the semantics so semantics are safe to compute without checking.
+getType :: CoreCmd -> TypeDomain
+getTpe TtheError = []
+getType (Push t)     = \s -> case t of
+                          (TheInt ii)    -> Just (Left TtheInt : s)
+                          (TheBool bb)   -> Just (Left TtheBool : s)
+                          (TheString ss) -> Just (Left TtheString : s)
+                          (TheFunc pp)   -> Just (Left TtheFunc : s)
+--                          _              -> Just (Left TtheError : s)
+
+getType Add          = \s -> case s of
+                           (Left i : Left j : s') -> case i of
+                                                       (TtheInt) -> case j of 
+                                                                     (TtheInt) -> Just (Left TtheInt : s')
+                                                                     _         -> Just (Left TtheError : s')
+                                                       _         -> Just (Left TtheError : s')
+getType Mul          = \s -> case s of
+                           (Left i : Left j : s') -> case i of
+                                                       (TtheInt) -> case j of 
+                                                                     (TtheInt) -> Just (Left TtheInt : s')
+                                                                     _         -> Just (Left TtheError : s')
+                                                       _         -> Just (Left TtheError : s')
+getType Equ          = \s -> case s of
+                           (Left i : Left j : s') -> Just (Left TtheBool : s')
+                           _                        -> Just (Left TtheError : s)
+                           
+getType (IfElse t e) = \s -> case s of  
+                           (Left i : Left j : s') -> case i of
+                                                       (TtheBool) -> case j of 
+                                                                     (TtheBool) -> Just s'
+                                                                     _         -> Just (Left TtheError : s')
+                                                       _         -> Just (Left TtheError : s')
+
+
+
+
 -- 2. Write the following StackLang program as a Haskell value:
 --
 --   add 3 to 4, then see if 7 == 8  change and see it work!
 --
 ex1 :: Prog
-ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 8), Equ]
+ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 7), Equ]
 
 
 
@@ -105,7 +164,12 @@ ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 8), Equ]
 
 -- 
 --type TheStack = [Either (Int,Bool,String) (Prog)]
-type TheStack = [Either StackType CoreCmd]
+
+type PlaceHolder = Int
+
+-- Stacktype includes prog, so we don't need either here! Maybe make the Right side a stack itself, so stacks can be passed around for powerful features?
+-- right was CoreCmd
+type TheStack = [Either StackValue PlaceHolder]
 --type Stack = [Either Int Bool]
 
 type Domain = TheStack -> Maybe TheStack

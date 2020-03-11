@@ -12,7 +12,7 @@ import Elevation
 for :: Int -> Prog -> Prog
 for i p = [
            Push (TheInt 0),
-           Push (TheInt (i - 1) ),
+           Push (TheInt (i - 1)),
            Equ,
            IfElse p ( p ++ (for (i - 1) p) )
           ]
