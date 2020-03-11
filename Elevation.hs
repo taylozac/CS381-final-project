@@ -116,8 +116,9 @@ getType (IfElse t e) = \s -> case s of
 ex1 :: Prog
 ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 7), Equ]
 
-
+--
 -- Concatenating Strings on stack
+--
 concatString :: String -> String -> Prog
 concatString s1 s2 = [
                       Push (TheString s1),
@@ -125,7 +126,9 @@ concatString s1 s2 = [
                       Push (TheString s2),
                       Add
                       ] 
-
+--
+-- Program to push two string on the stack and concatenate them
+--
 string_push :: Prog
 string_push = concatString "Hello" "World"
 
