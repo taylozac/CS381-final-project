@@ -88,6 +88,10 @@ getType Add          = \s -> case s of
                                                        (TtheInt) -> case j of 
                                                                      (TtheInt) -> Just (Left TtheInt : s')
                                                                      _         -> Just (Left TtheError : s')
+                                                       (TtheString) -> case j of
+                                                                     (TtheString) -> Just(Left TtheString : s')
+                                                                     _         -> Just (Left TtheString : s')
+
                                                        _         -> Just (Left TtheError : s')
 getType Mul          = \s -> case s of
                            (Left i : Left j : s') -> case i of
@@ -151,6 +155,8 @@ cmd Add          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TheInt i') -> case j of 
                                                                      (TheInt j') -> Just (Left (TheInt (i'+j')) : s')
+                                                       (TheString i') -> case j of 
+                                                                     (TheString j') -> Just (Left (TheString (i'+j')) : s')
 --                                                                            _ -> Nothing
 --                                                              _ -> Nothing
 cmd Mul          = \s -> case s of
