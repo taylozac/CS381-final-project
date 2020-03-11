@@ -117,53 +117,18 @@ ex1 :: Prog
 ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 7), Equ]
 
 
+-- Concatenating Strings on stack
+concatString :: String -> String -> Prog
+concatString s1 s2 = [
+                      Push (TheString s1),
+                      Add,
+                      Push (TheString s2),
+                      Add
+                      ] 
 
--- 3. Write a StackLang program that:
---     * checks whether 4 and 4 are equal
---     * if so, returns the result of adding 5 and 6
---     * if not, returns the value false
---    First write it in concrete syntax, then in abstract syntax as a Haskell value.
---
---    3 4 equ if 5 6 add else false end
---
---ex2 :: Prog
---ex2 = [PushN 4, PushN 4, Equ, IfElse [PushN 5, PushN 6, Add] [PushB False]]
+string_push :: Prog
+string_push = concatString "Hello" "World"
 
-
--- 4. Write a Haskell function that takes two arguments x and y
---    and generates a StackLang program that adds both x and y to
---    the number on the top of the stack
---genAdd2 :: Int -> Int -> Prog
---genAdd2 x y = [PushN x, PushN y, Add, Add]
-           -- [PushN x, Add, PushN y, Add]
-           -- [PushN (x+y), Add]  -- doing as much as possible at the metalanguage level
-
-
--- 5. Write a Haskell function that takes a list of integers and
---    generates a StackLang program that sums them all up.
---genSum :: [Int] -> Prog
---genSum []     = [PushN 0]
---genSum (x:xs) = genSum xs ++ [PushN x, Add]
-  -- [PushN x] ++ genSum xs ++ [Add]  -- this one works but is memory inefficient
-  -- genSum xs = [PushN (sum xs)] -- doing as much as possible at the metalanguage level
-
-
-
---
--- * Semantics of StackLang
---
-
-
--- 6. Identify/define a semantics domain for Cmd and for Prog.
---
---    Things we need:
---      * stack
---        * int
---        * bool
---      * error
-
--- 
---type TheStack = [Either (Int,Bool,String) (Prog)]
 
 type PlaceHolder = Int
 
