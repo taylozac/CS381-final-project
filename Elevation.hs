@@ -14,6 +14,7 @@ import Prelude
 --
 
 -- Grammar for StackLang:
+-- thing,
 -- 
 --    num ::= (any integer)
 --   bool ::= `true`  |  `false`
@@ -195,39 +196,45 @@ type PlaceHolder = Int
 type TheStack = [Either StackValue PlaceHolder]
 --type Stack = [Either Int Bool]
 
-type Domain = TheStack -> Maybe TheStack
+type Domain = TheStack -> (Maybe StackValue, Maybe TheStack)
 
 
 -- 7. Define the semantics of a StackLang command
 cmd :: CoreCmd -> Domain
-cmd (Push t)     = \s -> Just (Left t : s)
+
+cmd (Push t)     = \s -> (Nothing, Just (Left t : s))
+
+cmd Pop          = \s -> case s of
+                           (Left i : ss) -> (Just i, Just ss)
+                           _             -> (Nothing, Just s)
+    
 -- add has to check types at runtime to use ++ or +
 cmd Add          = \s -> case s of
                            (Left i : Left j : s') -> case (i,j) of
-                                                       (TheString i', TheString j') -> Just (Left (TheString (i' ++ j')) : s')
-                                                       (TheInt i', TheInt j')       -> Just (Left (TheInt (i' + j')) : s')                                                                        
+                                                       (TheString i', TheString j') -> (Nothing, Just (Left (TheString (i' ++ j')) : s'))
+                                                       (TheInt i', TheInt j')       -> (Nothing, Just (Left (TheInt (i' + j')) : s'))                                                                        
 cmd Mul          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TheInt i') -> case j of 
-                                                                     (TheInt j') -> Just (Left (TheInt (i' * j')) : s')
+                                                                     (TheInt j') -> (Nothing, Just (Left (TheInt (i' * j')) : s'))
 cmd Equ          = \s -> case s of
-                           (Left i  : Left j  : s') -> Just (Left (TheBool (i == j)) : s')
-                           _ -> Nothing
+                           (Left i  : Left j  : s') -> (Nothing, Just (Left (TheBool (i == j)) : s'))
+                           _ -> (Nothing, Nothing)
                            
 cmd (IfElse t e) = \s -> case s of  
                            ((Left (TheBool True))  : s') -> prog t s'
                            ((Left (TheBool False)) : s') -> prog e s'
-                           _ -> Nothing
+                           _ -> (Nothing, Nothing)
 
 
 
 
 -- 8. Define the semantics of a StackLang program.
 prog :: Prog -> Domain
-prog []    = \s -> Just s
+prog []    = \s -> (Nothing, Just s)
 prog (c:p) = \s -> case cmd c s of
-                     Just s' -> prog p s'
-                     _ -> Nothing
+                     (_, Just s') -> prog p s'
+                     _ -> (Nothing, Nothing)
 
 
 -- | Run a program on an initially empty stack.
@@ -241,8 +248,8 @@ prog (c:p) = \s -> case cmd c s of
 --   >>> run [PushN 3, Add, PushN 4]
 --   Nothing
 --
-run :: Prog -> Maybe TheStack
+run :: Prog -> (Maybe StackValue, Maybe TheStack)
 run p = case (progStaticEval p []) of
              (True,s)  -> prog p []
-             (False,s) -> Just [Left (TheString s)]
+             (False,s) -> (Nothing, Just [Left (TheString s)])
 
