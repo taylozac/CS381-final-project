@@ -7,6 +7,9 @@ module Elevation where
 import Prelude
 
 
+
+
+
 -- * Syntax of StackLang
 --
 
@@ -51,6 +54,25 @@ data SugarCmd = Swap
   deriving (Eq,Show)
 
 
+-- need to use this code inside the main program.
+-- This for loop works in the following way:
+--     (1) Push '0' and the current index onto the stack.
+--     (2) Check if they are equal.
+--     (3) If they are equal, run the loop again with the index decremented by one.
+--         Else, run the last copy of the program.
+--
+for :: Int -> Prog -> Prog
+for i p = case (i < 0) of
+               False ->  [Push (TheInt 0), Push (TheInt (i - 1)), Equ, IfElse p ( p ++ (for (i - 1) p) )]
+               True  -> []
+
+
+
+--
+-- This program pushes the value one onto the stack five times.
+--
+multi_push :: Prog
+multi_push = for 5 [Push (TheInt 1)]
 
 
 -- define the possible types
@@ -58,7 +80,7 @@ data StackType = TtheInt
                | TtheBool
                | TtheString
                | TtheFunc
-               | TtheError
+               | TtheError String
     deriving (Eq,Show)
 
 type TheTypeStack = [Either StackType PlaceHolder]
@@ -71,55 +93,66 @@ type TypeDomain = TheTypeStack -> Maybe TheTypeStack
 
 
 
--- 2133, code I have so far, touching up needs to be done and integration of this into the main code base but it should paint a picture of what is going to happen:
--- the program will run, using only types and just throw an error if an operation takes place on incorrect types, it doesn't "add" anything it just ensures
--- the types being added make sense (support strings eventually?), this type checking will occure before the semantics so semantics are safe to compute without checking.
+-- this function goes through and executes the commands as normal except it doesn't compute anything just works with types to ensure type correctness. It modifies the type stack accordingly.
 getType :: CoreCmd -> TypeDomain
-getTpe TtheError = []
+
 getType (Push t)     = \s -> case t of
-                          (TheInt ii)    -> Just (Left TtheInt : s)
-                          (TheBool bb)   -> Just (Left TtheBool : s)
-                          (TheString ss) -> Just (Left TtheString : s)
-                          (TheFunc pp)   -> Just (Left TtheFunc : s)
---                          _              -> Just (Left TtheError : s)
+                          (TheInt    whatever)    -> Just (Left TtheInt : s)
+                          (TheBool   doesnt)      -> Just (Left TtheBool : s)
+                          (TheString even)        -> Just (Left TtheString : s)
+                          (TheFunc   matter)      -> Just (Left TtheFunc : s)
+
+getType Pop          = \s -> case s of
+                           []          -> Just (Left (TtheError "pop error") : s)
+                           (s' : ss')  -> Just ss'
 
 getType Add          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TtheInt) -> case j of 
                                                                      (TtheInt) -> Just (Left TtheInt : s')
-                                                                     _         -> Just (Left TtheError : s')
+                                                                     _         -> Just (Left (TtheError "add int error") : s')
                                                        (TtheString) -> case j of
                                                                      (TtheString) -> Just(Left TtheString : s')
-                                                                     _         -> Just (Left TtheError : s')
+                                                                     _         -> Just (Left (TtheError "add string error") : s')
 
-                                                       _         -> Just (Left TtheError : s')
+                                                       _         -> Just (Left (TtheError "add general error") : s')
 getType Mul          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TtheInt) -> case j of 
                                                                      (TtheInt) -> Just (Left TtheInt : s')
-                                                                     _         -> Just (Left TtheError : s')
-                                                       _         -> Just (Left TtheError : s')
+                                                                     _         -> Just (Left (TtheError "mul error 1") : s')
+                                                       _         -> Just (Left (TtheError "mul error 2") : s')
 getType Equ          = \s -> case s of
-                           (Left i : Left j : s') -> Just (Left TtheBool : s')
-                           _                        -> Just (Left TtheError : s)
+                           (Left b1 : Left b2 : s') -> case b1 of
+                                                       TtheBool   -> case b2 of
+                                                                       TtheBool -> Just (Left TtheBool : s')
+                                                                       _        -> Just (Left (TtheError "equ bool error 1") : s')
+                                                       TtheInt    -> case b2 of
+                                                                       TtheInt  -> Just (Left TtheBool : s')
+                                                                       _        -> Just (Left (TtheError "equ int error 1") : s')
+                                                       TtheString -> case b2 of
+                                                                       TtheString  -> Just (Left TtheBool : s')
+                                                                       _        -> Just (Left (TtheError "equ string error 1") : s')
+                                                       _          -> Just (Left (TtheError "equ string error 2") : s')
                            
 getType (IfElse t e) = \s -> case s of  
-                           (Left i : Left j : s') -> case i of
-                                                       (TtheFunc) -> case j of 
-                                                                     (TtheFunc) -> Just s'
-                                                                     _         -> Just (Left TtheError : s')
-                                                       _         -> Just (Left TtheError : s')
+                               (Left boolVal : s') -> case boolVal of
+                                                       TtheBool -> case (fst (progStaticEval t s'), fst (progStaticEval e s')) of
+                                                                (True, True) -> Just s'
+                                                                _            -> Just (Left (TtheError "ifElse prog error") : s')
+                               _          -> Just (Left (TtheError "ifElse type error") : s)
 
 
 -- static evaluation of the program, its type correct or not: return a bool. This doesn't say if a program will return or compute bogus values, just that it is type correct.
-progStaticEval :: Prog -> TheTypeStack -> Bool
-progStaticEval [] _ = True
+-- what is this? just return nothing in getType instead of checking for Left TtheError.. was there a reason for this?
+progStaticEval :: Prog -> TheTypeStack -> (Bool,String)
+progStaticEval [] _ = (True,"end of prog.")
+progStaticEval _ [] = (True, "end of stack")
 progStaticEval (c:cs) s = case (getType c s) of
                                Just (s' : ss') -> case s' of
-                                                     (Left TtheError) -> False
+                                                     (Left (TtheError str)) -> (False,str)
                                                      _                -> progStaticEval cs (s' : ss')
-                               _               -> False
-
+                               _               -> (False, "waaat")
 
 -- 2. Write the following StackLang program as a Haskell value:
 --
@@ -127,6 +160,12 @@ progStaticEval (c:cs) s = case (getType c s) of
 --
 ex1 :: Prog
 ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 7), Equ]
+
+
+-- this program adds 5 + (5*7), 10 times over and should produce 400
+ex2 :: Prog
+--ex2 = for 10 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add, Add] this makes it to cmd, past the type check? need to see if stack has less than 2 values for add?
+ex2 = for 10 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add] ++ for 9 [Add]
 
 
 
@@ -138,9 +177,8 @@ exFailType1 = [Push (TheInt 3), Push (TheString "4"), Add, Push (TheInt 7), Equ]
 --
 concatString :: String -> String -> Prog
 concatString s1 s2 = [
-                      Push (TheString s1),
-                      Add,
                       Push (TheString s2),
+                      Push (TheString s1),
                       Add
                       ] 
 --
@@ -163,19 +201,15 @@ type Domain = TheStack -> Maybe TheStack
 -- 7. Define the semantics of a StackLang command
 cmd :: CoreCmd -> Domain
 cmd (Push t)     = \s -> Just (Left t : s)
--- static type check will ensure add is only applied to Ints or Strings, (String concatenation is required), maybe implement adding an Int to a String "aa" + 4 == "aa aa aa aa aa" (without spaces)?
+-- add has to check types at runtime to use ++ or +
 cmd Add          = \s -> case s of
-                           (Left i : Left j : s') -> case i of
-                                                       (TheInt i') -> case j of 
-                                                                     (TheInt j') -> Just (Left (TheInt (i' + j')) : s')
-                                                       (TheString i') -> case j of 
-                                                                     (TheString j') -> Just (Left (TheString (i' ++ j')) : s')
---                                                                            _ -> Nothing
---                                                              _ -> Nothing
+                           (Left i : Left j : s') -> case (i,j) of
+                                                       (TheString i', TheString j') -> Just (Left (TheString (i' ++ j')) : s')
+                                                       (TheInt i', TheInt j')       -> Just (Left (TheInt (i' + j')) : s')                                                                        
 cmd Mul          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TheInt i') -> case j of 
-                                                                     (TheInt j') -> Just (Left (TheInt (i'+j')) : s')
+                                                                     (TheInt j') -> Just (Left (TheInt (i' * j')) : s')
 cmd Equ          = \s -> case s of
                            (Left i  : Left j  : s') -> Just (Left (TheBool (i == j)) : s')
                            _ -> Nothing
@@ -209,6 +243,6 @@ prog (c:p) = \s -> case cmd c s of
 --
 run :: Prog -> Maybe TheStack
 run p = case (progStaticEval p []) of
-             True -> prog p []
-             _    -> Just [Left (TheString "TYPE ERROR OCCURED DURING STATIC COMPILE TIME.")]
+             (True,s)  -> prog p []
+             (False,s) -> Just [Left (TheString s)]
 
