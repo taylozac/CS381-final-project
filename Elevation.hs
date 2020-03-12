@@ -90,7 +90,7 @@ getType Add          = \s -> case s of
                                                                      _         -> Just (Left TtheError : s')
                                                        (TtheString) -> case j of
                                                                      (TtheString) -> Just(Left TtheString : s')
-                                                                     _         -> Just (Left TtheString : s')
+                                                                     _         -> Just (Left TtheError : s')
 
                                                        _         -> Just (Left TtheError : s')
 getType Mul          = \s -> case s of
@@ -105,12 +105,20 @@ getType Equ          = \s -> case s of
                            
 getType (IfElse t e) = \s -> case s of  
                            (Left i : Left j : s') -> case i of
-                                                       (TtheBool) -> case j of 
-                                                                     (TtheBool) -> Just s'
+                                                       (TtheFunc) -> case j of 
+                                                                     (TtheFunc) -> Just s'
                                                                      _         -> Just (Left TtheError : s')
                                                        _         -> Just (Left TtheError : s')
 
 
+-- static evaluation of the program, its type correct or not: return a bool. This doesn't say if a program will return or compute bogus values, just that it is type correct.
+progStaticEval :: Prog -> TheTypeStack -> Bool
+progStaticEval [] _ = True
+progStaticEval (c:cs) s = case (getType c s) of
+                               Just (s' : ss') -> case s' of
+                                                     (Left TtheError) -> False
+                                                     _                -> progStaticEval cs (s' : ss')
+                               _               -> False
 
 
 -- 2. Write the following StackLang program as a Haskell value:
@@ -119,6 +127,11 @@ getType (IfElse t e) = \s -> case s of
 --
 ex1 :: Prog
 ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 7), Equ]
+
+
+
+exFailType1 :: Prog
+exFailType1 = [Push (TheInt 3), Push (TheString "4"), Add, Push (TheInt 7), Equ]
 
 --
 -- Concatenating Strings on stack
@@ -154,9 +167,9 @@ cmd (Push t)     = \s -> Just (Left t : s)
 cmd Add          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TheInt i') -> case j of 
-                                                                     (TheInt j') -> Just (Left (TheInt (i'+j')) : s')
+                                                                     (TheInt j') -> Just (Left (TheInt (i' + j')) : s')
                                                        (TheString i') -> case j of 
-                                                                     (TheString j') -> Just (Left (TheString (i'+j')) : s')
+                                                                     (TheString j') -> Just (Left (TheString (i' ++ j')) : s')
 --                                                                            _ -> Nothing
 --                                                              _ -> Nothing
 cmd Mul          = \s -> case s of
@@ -171,6 +184,8 @@ cmd (IfElse t e) = \s -> case s of
                            ((Left (TheBool True))  : s') -> prog t s'
                            ((Left (TheBool False)) : s') -> prog e s'
                            _ -> Nothing
+
+
 
 
 -- 8. Define the semantics of a StackLang program.
@@ -193,4 +208,7 @@ prog (c:p) = \s -> case cmd c s of
 --   Nothing
 --
 run :: Prog -> Maybe TheStack
-run p = prog p []
+run p = case (progStaticEval p []) of
+             True -> prog p []
+             _    -> Just [Left (TheString "TYPE ERROR OCCURED DURING STATIC COMPILE TIME.")]
+
