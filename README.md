@@ -12,8 +12,18 @@ Our language, Elevation is a stack based language. We utilize core commands such
 How to execute:
 
 In the terminal, 
+
     -> run GHCI 
         -> Elevation is only module that needs to be loaded.
+        
     -> run ex1
+        -> Runs an addition program 
         -> Expected output
         -> Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 8), Equ]
+    
+     -> run ex2
+        -> Executes for loop
+        -> Expected output
+        -> [Push (TheInt 0),Push (TheInt 0),Equ,IfElse [Push (TheInt 5),Push (TheInt 5),Push (TheInt 7),Mul,Add] [Push
+        (TheInt 5),Push (TheInt 5),Push (TheInt 7),Mul,Add,Push (TheInt 0),Push (TheInt (-1)),Equ,IfElse [Push (TheInt
+        5),Push (TheInt 5),Push (TheInt 7),Mul,Add] [Push (TheInt 5),Push (TheInt 5),Push (TheInt 7),Mul,Add]]]
