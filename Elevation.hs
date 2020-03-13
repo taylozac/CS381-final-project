@@ -10,11 +10,6 @@ import Prelude
 
 
 
--- * Syntax of StackLang
---
-
--- Grammar for StackLang:
--- thing,
 -- 
 --    num ::= (any integer)
 --   bool ::= `true`  |  `false`
@@ -166,9 +161,6 @@ progStaticEval (c:cs) s = case (getType c s) of
                                                      _                      -> progStaticEval cs (s')
                                _               -> (False, "waaat")
 
--- 2. Write the following StackLang program as a Haskell value:
---
---   add 3 to 4, then see if 7 == 8  change and see it work!
 --
 ex1 :: Prog
 ex1 = for 1 [Push (TheInt 3), Push (TheInt 4), Add, Push (TheString "aaaa")]
@@ -216,7 +208,6 @@ type TheStack = [Either StackValue PlaceHolder]
 type Domain = TheStack -> (Maybe StackValue, Maybe TheStack)
 
 
--- 7. Define the semantics of a StackLang command
 cmd :: CoreCmd -> Domain
 
 cmd (Push t)     = \s -> (Nothing, Just (Left t : s))
@@ -246,7 +237,7 @@ cmd (IfElse t e) = \s -> case s of
 
 
 
--- 8. Define the semantics of a StackLang program.
+
 prog :: Prog -> Domain
 prog []    = \s -> (Nothing, Just s)
 prog (c:p) = \s -> case cmd c s of
