@@ -140,7 +140,7 @@ getType (IfElse t e) = \s -> case s of
                                (Left boolVal : s') -> case boolVal of
                                                        TtheBool -> case (fst (progStaticEval t s'), fst (progStaticEval e s')) of
                                                                 (True, True) -> Just s'
-                                                                _            -> Just [Left (TtheError "ifElse prog error")]
+                                                                _            -> Just [Left (TtheError (snd (progStaticEval e s') ++ " " ++ snd (progStaticEval t s')))]
                                _          -> Just [Left (TtheError "ifElse type error")]
 
 
@@ -151,9 +151,9 @@ progStaticEval [] _ = (True,"end of prog.")
 --progStaticEval _ [] = (True, "end of stack")
 progStaticEval (c:cs) [] = case c of 
                               Push a     -> case (getType c []) of
-                                                   Just (s' : ss') -> case s' of
-                                                                       (Left (TtheError str)) -> (False,str)
-                                                                       _                      -> progStaticEval cs (s' : ss')
+                                                   Just (s') -> case s' of
+                                                                       [Left (TtheError str)] -> (False,str)
+                                                                       _                      -> progStaticEval cs (s')
                                                    _               -> (False, "waaddddddddddat")
                               Pop        -> (False, "empty stack pop")
                               Add        -> (False, "empty stack add") -- should we check that add has 2 arguments cause what if there is just 1?
@@ -161,9 +161,9 @@ progStaticEval (c:cs) [] = case c of
                               Equ        -> (False, "empty stack equ")
                               IfElse a b -> (False, "empty stack ifel")
 progStaticEval (c:cs) s = case (getType c s) of
-                               Just (s' : ss') -> case s' of
-                                                     (Left (TtheError str)) -> (False,str)
-                                                     _                      -> progStaticEval cs (s' : ss')
+                               Just (s') -> case s' of
+                                                     [Left (TtheError str)] -> (False,str)
+                                                     _                      -> progStaticEval cs (s')
                                _               -> (False, "waaat")
 
 -- 2. Write the following StackLang program as a Haskell value:
@@ -171,17 +171,17 @@ progStaticEval (c:cs) s = case (getType c s) of
 --   add 3 to 4, then see if 7 == 8  change and see it work!
 --
 ex1 :: Prog
-ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 7), Equ]
+ex1 = for 1 [Push (TheInt 3), Push (TheInt 4), Add, Push (TheString "aaaa")]
 
 
 -- this program adds 5 + (5*7), 10 times over and should produce 400
 ex2 :: Prog
 --ex2 = for 10 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add, Add] this makes it to cmd, past the type check? need to see if stack has less than 2 values for add?
-ex2 = for 1 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add]-- ++ for 9 [Add]
+ex2 = (for 10 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add]) ++ for 9 [Add]
 
 
 ex3 :: Prog
-ex3 = [Add]
+ex3 = [Push (TheInt 5), Push (TheInt 5), Push (TheInt 5), Push (TheInt 5), Add, Add, Add]
 
 ex4 :: Prog
 ex4 = [Push (TheInt 5)]
