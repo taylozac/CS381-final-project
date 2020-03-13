@@ -104,55 +104,66 @@ getType (Push t)     = \s -> case t of
                           (TheFunc   matter)      -> Just (Left TtheFunc : s)
 
 getType Pop          = \s -> case s of
-                           []          -> Just (Left (TtheError "pop error") : s)
+                           []          -> Just [Left (TtheError "pop error")]
                            (s' : ss')  -> Just ss'
 
 getType Add          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TtheInt) -> case j of 
                                                                      (TtheInt) -> Just (Left TtheInt : s')
-                                                                     _         -> Just (Left (TtheError "add int error") : s')
+                                                                     _         -> Just [Left (TtheError "add int error")]
                                                        (TtheString) -> case j of
                                                                      (TtheString) -> Just(Left TtheString : s')
-                                                                     _         -> Just (Left (TtheError "add string error") : s')
+                                                                     _         -> Just [Left (TtheError "add string error")]
 
-                                                       _         -> Just (Left (TtheError "add general error") : s')
+                                                       _         -> Just [Left (TtheError "add general error")]
 getType Mul          = \s -> case s of
                            (Left i : Left j : s') -> case i of
                                                        (TtheInt) -> case j of 
                                                                      (TtheInt) -> Just (Left TtheInt : s')
-                                                                     _         -> Just (Left (TtheError "mul error 1") : s')
-                                                       _         -> Just (Left (TtheError "mul error 2") : s')
+                                                                     _         -> Just [Left (TtheError "mul error 1")]
+                                                       _         -> Just [Left (TtheError "mul error 2")]
 getType Equ          = \s -> case s of
                            (Left b1 : Left b2 : s') -> case b1 of
                                                        TtheBool   -> case b2 of
                                                                        TtheBool -> Just (Left TtheBool : s')
-                                                                       _        -> Just (Left (TtheError "equ bool error 1") : s')
+                                                                       _        -> Just [Left (TtheError "equ bool error 1")]
                                                        TtheInt    -> case b2 of
                                                                        TtheInt  -> Just (Left TtheBool : s')
-                                                                       _        -> Just (Left (TtheError "equ int error 1") : s')
+                                                                       _        -> Just [Left (TtheError "equ int error 1")]
                                                        TtheString -> case b2 of
                                                                        TtheString  -> Just (Left TtheBool : s')
-                                                                       _        -> Just (Left (TtheError "equ string error 1") : s')
-                                                       _          -> Just (Left (TtheError "equ string error 2") : s')
+                                                                       _        -> Just [Left (TtheError "equ string error 1")]
+                                                       _          -> Just [Left (TtheError "equ string error 2")]
                            
 getType (IfElse t e) = \s -> case s of  
                                (Left boolVal : s') -> case boolVal of
                                                        TtheBool -> case (fst (progStaticEval t s'), fst (progStaticEval e s')) of
                                                                 (True, True) -> Just s'
-                                                                _            -> Just (Left (TtheError "ifElse prog error") : s')
-                               _          -> Just (Left (TtheError "ifElse type error") : s)
+                                                                _            -> Just [Left (TtheError "ifElse prog error")]
+                               _          -> Just [Left (TtheError "ifElse type error")]
 
 
 -- static evaluation of the program, its type correct or not: return a bool. This doesn't say if a program will return or compute bogus values, just that it is type correct.
 -- what is this? just return nothing in getType instead of checking for Left TtheError.. was there a reason for this?
 progStaticEval :: Prog -> TheTypeStack -> (Bool,String)
 progStaticEval [] _ = (True,"end of prog.")
-progStaticEval _ [] = (True, "end of stack")
+--progStaticEval _ [] = (True, "end of stack")
+progStaticEval (c:cs) [] = case c of 
+                              Push a     -> case (getType c []) of
+                                                   Just (s' : ss') -> case s' of
+                                                                       (Left (TtheError str)) -> (False,str)
+                                                                       _                      -> progStaticEval cs (s' : ss')
+                                                   _               -> (False, "waaddddddddddat")
+                              Pop        -> (False, "empty stack pop")
+                              Add        -> (False, "empty stack add") -- should we check that add has 2 arguments cause what if there is just 1?
+                              Mul        -> (False, "empty stack mul")
+                              Equ        -> (False, "empty stack equ")
+                              IfElse a b -> (False, "empty stack ifel")
 progStaticEval (c:cs) s = case (getType c s) of
                                Just (s' : ss') -> case s' of
                                                      (Left (TtheError str)) -> (False,str)
-                                                     _                -> progStaticEval cs (s' : ss')
+                                                     _                      -> progStaticEval cs (s' : ss')
                                _               -> (False, "waaat")
 
 -- 2. Write the following StackLang program as a Haskell value:
@@ -166,8 +177,14 @@ ex1 = [Push (TheInt 3), Push (TheInt 4), Add, Push (TheInt 7), Equ]
 -- this program adds 5 + (5*7), 10 times over and should produce 400
 ex2 :: Prog
 --ex2 = for 10 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add, Add] this makes it to cmd, past the type check? need to see if stack has less than 2 values for add?
-ex2 = for 10 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add] ++ for 9 [Add]
+ex2 = for 1 [Push (TheInt 5), Push (TheInt 5), Push (TheInt 7), Mul, Add]-- ++ for 9 [Add]
 
+
+ex3 :: Prog
+ex3 = [Add]
+
+ex4 :: Prog
+ex4 = [Push (TheInt 5)]
 
 
 exFailType1 :: Prog
